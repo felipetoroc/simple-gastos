@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-import {collection, addDoc, getFirestore,onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+import {orderBy,query,collection, addDoc, getFirestore,onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 import {getAuth ,signInWithEmailAndPassword,onAuthStateChanged,signOut    } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -27,7 +27,7 @@ const logout = () => signOut(auth)
 
 const addMovimiento = (movimiento) => addDoc(collection(db, "movimientos"), movimiento);
 
-const onGetMovimientos = (callback) => onSnapshot(collection(db,'movimientos'),callback)
+const onGetMovimientos = (callback) => onSnapshot(query(collection(db,'movimientos'),orderBy('fecha','desc')),callback)
 
 const listaMovimientos = document.getElementById('listaMovimientos')
 const formLogin = document.getElementById('formLogin')
@@ -46,34 +46,70 @@ window.addEventListener('DOMContentLoaded', async() => {
             logoutTags.forEach(tag => tag.style.display = 'none')
             document.getElementById('userLogeado').innerHTML = user.email
             userUid = user.uid;
-            onGetMovimientos((querySnapshot)=>{
-                listaMovimientos.innerHTML = ''
-                querySnapshot.forEach((doc) => {
-
-                    if(doc.data().userUid === userUid)
-                        listaMovimientos.innerHTML += `
-                        <td>
-                            ${doc.data().fecha}
-                        </td>
-                        <td>
-                            ${doc.data().categoria}
-                        </td>
-                        <td>
-                            ${doc.data().nombre}
-                        </td>
-                        <td>
-                            ${doc.data().monto}
-                        </td>
-                        `
-                });
-            })
           // ...
         } else {
             loginTags.forEach(tag => tag.style.display = 'none')
             logoutTags.forEach(tag => tag.style.display = 'block')
             document.getElementById('userLogeado').innerHTML = 'Bienvenido'
         }
-      });
+    });
+    onGetMovimientos((querySnapshot)=>{
+                
+        listaMovimientos.innerHTML = ''
+        let arrMovimientos = []
+        querySnapshot.forEach((doc) => {
+
+            if(doc.data().userUid === userUid){
+                let fecha = new Date(doc.data().fecha)
+                if(fecha >= new Date("2022-11-23")){
+                    listaMovimientos.innerHTML += `
+                    <td>
+                        ${fecha.getFullYear()+'-' + (fecha.getMonth()+1) + '-'+fecha.getDate() + ' ' + fecha.getUTCHours()}
+                    </td>
+                    <td>
+                        ${doc.data().categoria}
+                    </td>
+                    <td>
+                        ${doc.data().nombre}
+                    </td>
+                    <td>
+                        ${doc.data().monto}
+                    </td>
+                    `
+                }
+            }
+            arrMovimientos.push(doc.data())
+        });
+        
+        
+        const sumWithInitial = arrMovimientos.reduce((accumulator, currentValue,indice,array) => {
+                let suma = 0
+                console.log(currentValue.categoria)
+                array.map((val) => {
+                    if(currentValue.categoria.toLowerCase() === val.categoria.toLowerCase()){
+                        //console.log(val.monto)
+                        suma += parseInt(val.monto)
+                    }
+                    
+                })
+                console.log(suma)
+                return accumulator + parseInt(currentValue.monto)
+            },0
+        );
+
+        console.log(sumWithInitial)
+        let suma = 0;
+        arrMovimientos.map(mov => {
+            suma += parseInt(mov.monto)
+        })
+
+        $(document).ready( function () {
+            $('#tableMovimientos').DataTable();
+        } );
+        
+    })
+    
+    
 });
 
 formLogin.addEventListener('submit',(e) => {
@@ -124,3 +160,4 @@ formMovimiento.addEventListener('submit',(e) => {
         userUid
       })
 })
+
